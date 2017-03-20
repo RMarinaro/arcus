@@ -1,7 +1,7 @@
 var restify = require('restify');
 var builder = require('botbuilder');
 var ThingspaceCloud = require('./vendor/thingspace-cloud-node.min.js');
-var http = require('http');
+var https = require('https');
 var fs = require('fs');
 var tmp = require('tmp');
 var crypto = require('crypto');
@@ -220,7 +220,7 @@ function uploadHandler(text, session, callback) {
     	}); 
 	});
 
-	var request = http.get(session.message.attachments[0].contentUrl, function(response) {
+	var request = https.get(session.message.attachments[0].contentUrl, function(response) {
 		response.pipe(savedAttachment);
 		response.pipe(hash);
 	});
