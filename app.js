@@ -61,9 +61,9 @@ function helpHandler(text, session, callback) {
 
 	var query;
 
-	index = text.indexOf('how do i');
+	var index = text.indexOf('how do i');
 	if(index != -1) {
-		query = text.substring(index + 1);
+		query = text.substring(index + 9);
 	} else {
 		return false;
 	}
