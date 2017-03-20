@@ -31,31 +31,29 @@ server.post('/api/messages', connector.listen());
 // Bots Dialogs
 //=========================================================
 
+
+var handlers = [
+	accountHandler,
+	pictureHandler,
+	helpHandler
+];
+
+
+
 bot.dialog('/', function (session) {
 	session.sendTyping();
 	var text = session.message.text.toLowerCase();
-	var handler = function(response) {
+	var handlerCallback = function(response) {
 		session.send(response);
 	}
 
 	console.log("message", text);
 
-	var handled = accountHandler(text, handler);
-
-	if(handled) {
-		return;
-	}
-
-	var handled = helpHandler(text, session, handler);
-	
-	if(handled) {
-		return;
-	}
-
-	var handled = pictureHandler(text, session, handler);
-	
-	if(handled) {
-		return;
+	for(var c = 0; c < handlers.length; c++) {
+		var handled = handlers[c](text, session, handlerCallback);
+		if(handled) {
+			return;
+		}
 	}
 
 	session.send("Sorry I dont know how to handle that command");
@@ -99,7 +97,7 @@ function pictureHandler(text, session, callback) {
 	cloud.search({
 		count: 5,
 		query : "contentType:image/*",
-		srot : "creationDate+desc",
+		sort : "creationDate+desc",
 		success: function(success) {
 			console.log(success.body.searchResults.file);
 
@@ -118,7 +116,7 @@ function pictureHandler(text, session, callback) {
             callback(message);
 		},
 		failure: function(failure) {
-		    callback("success failure");
+		    callback("Could not fetch photos");
 		}		
 	})
 
@@ -126,7 +124,7 @@ function pictureHandler(text, session, callback) {
 }
 
 
-function accountHandler(text, callback) {
+function accountHandler(text, session, callback) {
 
 	if(text.indexOf('account') == -1) {
 		return false;
