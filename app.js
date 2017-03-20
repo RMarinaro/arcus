@@ -32,6 +32,7 @@ server.post('/api/messages', connector.listen());
 //=========================================================
 
 bot.dialog('/', function (session) {
+	session.sendTyping();
 	var text = session.message.text.toLowerCase();
 	var handler = function(response) {
 		session.send(response);
@@ -106,17 +107,14 @@ function pictureHandler(text, session, callback) {
 			var urls = [];
 
 			for(var c = 0; c < files.length; c++) {
-				urls.push(builder.CardImage.create(session, cloud.getThumbnailUrl(files[c].contentToken, 'l')));
+				urls.push({ 
+					'contentType' : "image/jpeg",
+					"contentUrl" : cloud.getThumbnailUrl(files[c].contentToken, 'l')
+				});
 			}
 
 			var message = new builder.Message(session)
-		        .textFormat(builder.TextFormat.xml)
-		        .attachments([
-		            new builder.HeroCard(session)
-		                .title("Most recent photos")
-		                .subtitle(text)
-		                .images(urls)
-		        	]);
+		        .attachments(urls);
             callback(message);
 		},
 		failure: function(failure) {
