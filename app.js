@@ -51,6 +51,12 @@ bot.dialog('/', function (session) {
 		return;
 	}
 
+	var handled = pictureHandler(text, session, handler);
+	
+	if(handled) {
+		return;
+	}
+
 	session.send("Sorry I dont know how to handle that command");
 	return;
 });
@@ -83,6 +89,44 @@ function helpHandler(text, session, callback) {
 	return true;
 
 }
+
+function pictureHandler(text, session, callback) {
+	if(text.indexOf('picture') == -1 && text.indexOf('photo') == -1) {
+		return false;
+	}
+
+	cloud.search({
+		count: 5,
+		query : "contentType:image/*",
+		srot : "creationDate+desc",
+		success: function(success) {
+			console.log(success.body.searchResults.file);
+
+			var files = success.body.searchResults.file;
+			var urls = [];
+
+			for(var c = 0; c < files.length; c++) {
+				urls.push(builder.CardImage.create(session, cloud.getThumbnailUrl(files[c].contentToken, 'l')));
+			}
+
+			var message = new builder.Message(session)
+		        .textFormat(builder.TextFormat.xml)
+		        .attachments([
+		            new builder.HeroCard(session)
+		                .title("Most recent photos")
+		                .subtitle(text)
+		                .images(urls)
+		        	]);
+            callback(message);
+		},
+		failure: function(failure) {
+		    callback("success failure");
+		}		
+	})
+
+	return true;
+}
+
 
 function accountHandler(text, callback) {
 
