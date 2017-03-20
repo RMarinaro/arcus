@@ -1,6 +1,10 @@
 var restify = require('restify');
 var builder = require('botbuilder');
 var ThingspaceCloud = require('./vendor/thingspace-cloud-node.min.js');
+var http = require('http');
+var fs = require('fs');
+var tmp = require('tmp');
+var crypto = require('crypto');
 
 //=========================================================
 // Bot Setup
@@ -36,7 +40,8 @@ var handlers = [
 	accountHandler,
 	pictureHandler,
 	helpHandler,
-	lastSyncedHandler
+	lastSyncedHandler,
+	uploadHandler
 ];
 
 bot.dialog('/', function (session) {
@@ -163,6 +168,62 @@ function accountHandler(text, session, callback) {
 		}
 	})
 
+	return true;
+}
+
+function uploadHandler(text, session, callback) {
+	if(!session.message.attachments) {
+		return false;
+	}
+
+	var filename = session.message.attachments[0].name;
+	var savedAttachment = fs.createWriteStream(tmp.tmpNameSync());
+	var hash = crypto.createHash('sha256');
+	var computedHash;
+	var fileSizeInBytes;
+
+	hash.setEncoding('hex');
+	        
+	// calculate the hash in a stream, one chunk at a time, then read the result when we're all done
+    hash.on('finish', function () {
+		hash.end();      	
+		computedHash = hash.read();
+        console.log("computedHash", computedHash);
+    });
+	
+	savedAttachment.on('close', function() {
+        // first create a temporary file
+        console.log("done saving", savedAttachment);
+    	var filestream = fs.createReadStream(savedAttachment.path);
+    	console.log("file stream", filestream);
+		var stats = fs.statSync(savedAttachment.path);
+		fileSizeInBytes = stats["size"];	        	
+    	// we have everything we need, let's call the upload facade with the file stream, and the necessary metadata
+    	// note that the upload facade handles both chunked and unchunked uploads auotmatically, if a file is over 100mb it will 
+    	// use the chunked upload, otherwise it will use unchunked
+		cloud.upload({
+    		checksum: computedHash, 
+    		concurrentChunks: 8, //8 chunks in parallel at a time, default is 5. NOTE this is only used when the file is > 100mb and chunked uploads are used
+			chunkSize: 2097152* 3, //6mb, default is 2mb.  NOTE this is only used when the file is > 100mb and chunked uploads are used
+    		name: filename,
+    		path: '/VZMOBILE',
+    		size: fileSizeInBytes,
+    		fs: filestream, // pass the file stream to the cloud SDK, it will stream the contents to the server
+    		success: function(success) {
+    			//the file has been upladed, we can grab the new file's metadata here 
+    			console.log(success.body.file);
+    			callback("Your file has been saved in the cloud");
+    		}, 
+    		failure: function(failure) {
+    			callback("Could not save file");
+    		}
+    	}); 
+	});
+
+	var request = http.get(session.message.attachments[0].contentUrl, function(response) {
+		response.pipe(savedAttachment);
+		response.pipe(hash);
+	});
 	return true;
 }
 
