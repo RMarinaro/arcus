@@ -20,7 +20,7 @@ var connector = new builder.ChatConnector({
 
 // Creat thingspace with hard coded token
 var cloud = new ThingspaceCloud({
-	authToken: 'ATGWRSZKWV7RQ5HUA5G6GU5ROBH5GAMKIQVHJOFMGPMW2MUXDFKEDKQASLILLIZRUUXZHUX4GAIX4RWQBMTA4K4HAH6JFBPL6NYTIC6GDJ2RVPIWURFRGMMTF3KDGIPVRPTTL3VABDJDRGPHOETWJBI7MMHABK75OORBFX75ICSNFZKS3UCWQEDS5VWNI4YRBNHORBIUMXAFOEDWV3FBGUNYRZVETWI37F4KU5SG6ZRPZIPXZDKUA5QDU2QS5MU4IBCOR4O2C4RTQ6A6ZHRY4LSPTKC4TGG6BVSKKL36SAINC6C4RGTN43C5T4I5ZTD5XBXXW46ELKFL3W5V5FLBQGJ2GX2UL6YZVF5PYEWPNOTT7STFGC53AMZRXI3L4NIE',
+	authToken: 'MTBI2YKQWZKAF3PUBAXRMR4NLPZKLK766H7FKFT5MXA2HNQ42KCKWGUAB5S4T6MHV4LACNA3AVX6LFT434JKZ7XOKLQZZUHDVTJBMHVPZRIH66UVRGFQNG3TCPA3LOZCFFXF6QROVBP5R2ZAO26C6FOV5RBZVH6WU3MSZZJOSWINMCYYZ54BD7QQASUCTMZR6XX5GB3UR65TBJZHJCPZ4IL6TLTFCNP3LVJLSXND2C2ZEFSCCY4DTHK6NJONTSVFBZW6VVH6PSC7CMQCCZ4KX3BOSMHTY2M5D4T256HOGBTDRHCXMLBVJ6WKGD4JOHWA75T3XBVIPD75HDDP5Q42WJCL5NBZGET6TRYBKJNK3U7LS3JXQAGDHLJLIGVCSJAC',
 	htmlEscape: false
 }).cloud;
 
@@ -32,20 +32,78 @@ server.post('/api/messages', connector.listen());
 //=========================================================
 
 bot.dialog('/', function (session) {
+	var text = session.message.text.toLowerCase();
+	var handler = function(response) {
+		session.send(response);
+	}
+
+	console.log("message", text);
+
+	var handled = accountHandler(text, handler);
+
+	if(handled) {
+		return;
+	}
+
+	var handled = helpHandler(text, session, handler);
+	
+	if(handled) {
+		return;
+	}
+
+	session.send("Sorry I dont know how to handle that command");
+	return;
+});
+
+
+
+function helpHandler(text, session, callback) {
+
+	var query;
+
+	index = text.indexOf('how do i');
+	if(index != -1) {
+		query = text.substring(index + 1);
+	} else {
+		return false;
+	}
+
+    var message = new builder.Message(session)
+        .textFormat(builder.TextFormat.xml)
+        .attachments([
+            new builder.HeroCard(session)
+                .title("Verizon Support")
+                .subtitle(text)
+                .images([
+                    builder.CardImage.create(session, "https://www.verizon.com/cs/groups/public/documents/adacct/vzlogo_lg.png")
+                ])
+                .tap(builder.CardAction.openUrl(session, "http://www.verizon.com/search/SearchResults?Ntt=" + encodeURIComponent(query)))
+        ]);
+    callback(message);
+	return true;
+
+}
+
+function accountHandler(text, callback) {
+
+	if(text.indexOf('account') == -1) {
+		return false;
+	}
 
 	cloud.account({
 		success: function(success) {
 			var usagePercent =  success.body.usage.quotaUsed / success.body.usage.quota * 100;
 			var used = formatBytes(success.body.usage.quotaUsed, 2);
 			var max = formatBytes(success.body.usage.quota, 2);
-		    session.send("You are using " + used + " of your " + max);
+		    callback("You are using " + used + " of your " + max);
 		},
 		failure: function(failure) {
-			session.send("Could not get account data");
+			callback("Could not get account data");
 		}
 	})
-    
-});
+
+	return true;
+}
 
 function formatBytes(bytes,decimals) {
    if(bytes == 0) return '0 Byte';
