@@ -35,10 +35,9 @@ server.post('/api/messages', connector.listen());
 var handlers = [
 	accountHandler,
 	pictureHandler,
-	helpHandler
+	helpHandler,
+	lastSyncedHandler
 ];
-
-
 
 bot.dialog('/', function (session) {
 	session.sendTyping();
@@ -97,7 +96,7 @@ function pictureHandler(text, session, callback) {
 	cloud.search({
 		count: 5,
 		query : "contentType:image/*",
-		sort : "creationDate+desc",
+		sort : "versionCreated+desc",
 		success: function(success) {
 			console.log(success.body.searchResults.file);
 
@@ -123,6 +122,28 @@ function pictureHandler(text, session, callback) {
 	return true;
 }
 
+
+function lastSyncedHandler(text, session, callback) {
+	if(text.indexOf('backed up') == -1 && text.indexOf('backup') == -1) {
+		return false;
+	}
+
+	cloud.search({
+		query: 'file:true',
+		count: 1,
+		sort : "versionCreated+desc",
+		success: function(success) {
+			var file = success.body.searchResults.file[0];
+			console.log(file);
+            callback('Your data was backed up ' + timeSince(new Date(file.versionCreated)) + ' ago.');
+		},
+		failure: function(failure) {
+		    callback("Could not fetch last backed up time");
+		}		
+	})
+
+	return true;	
+}
 
 function accountHandler(text, session, callback) {
 
@@ -154,3 +175,30 @@ function formatBytes(bytes,decimals) {
    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
+function timeSince(date) {
+
+    var seconds = Math.floor((new Date() - date) / 1000);
+
+    var interval = Math.floor(seconds / 31536000);
+
+    if (interval > 1) {
+        return interval + " years";
+    }
+    interval = Math.floor(seconds / 2592000);
+    if (interval > 1) {
+        return interval + " months";
+    }
+    interval = Math.floor(seconds / 86400);
+    if (interval > 1) {
+        return interval + " days";
+    }
+    interval = Math.floor(seconds / 3600);
+    if (interval > 1) {
+        return interval + " hours";
+    }
+    interval = Math.floor(seconds / 60);
+    if (interval > 1) {
+        return interval + " minutes";
+    }
+    return Math.floor(seconds) + " seconds";
+}
